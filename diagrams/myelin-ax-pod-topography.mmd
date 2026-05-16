@@ -1,0 +1,26 @@
+graph LR
+  subgraph POD["Kubernetes Pod (The Myelin Sheath)"]
+    subgraph AB["Container: agent-brain (User Space)"]
+      AB1["Runs Unprivileged"]
+      AB2["No Egress Network Access"]
+    end
+
+    subgraph MP["Container: myelin-proxy (Kernel Space / Sidecar)"]
+      MP1["USAGE gRPC Server"]
+      MP2["Governance Enforcement"]
+    end
+
+    subgraph SB["Container: myelin-sandbox (Ephemeral Tool Worker)"]
+      SB1["Zero-Trust Tool Execution"]
+      SB2["RuntimeClass: gvisor / firecracker"]
+    end
+
+    AB1 <--> |"localhost:50051 (gRPC System Calls)"| MP1
+    MP2 -->|"Control Link: Spawn / Reap Tool Task"| SB1
+  end
+
+  LLM["External LLM Providers"]
+  OPA["Central OPA Gatekeeper Engine"]
+
+  MP2 -->|"Policy-Mediated Egress"| LLM
+  MP2 -->|"ValidateAction / Policy Decisions"| OPA

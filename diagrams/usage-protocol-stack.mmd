@@ -1,0 +1,52 @@
+graph TD
+  %% USAGE Protocol Stack
+  subgraph L4["Layer 4 - Cognitive Application Layer"]
+    L4P["Prompts"]
+    L4M["LLMs"]
+    L4F["CrewAI / LangChain Frameworks"]
+    L4I["Intent Engine"]
+  end
+
+  subgraph L3["Layer 3 - Governance and Aspect Layer"]
+    L3O["OPA Guardrails"]
+    L3T["Token Quota Budgeting"]
+    L3R["PII and Secret Redaction Proxy"]
+  end
+
+  subgraph L2["Layer 2 - Runtime and Execution Layer"]
+    L2S["State Machine Tracking"]
+    L2G["Asynchronous Signaling (SIG_PAUSE)"]
+    L2I["IPC Engine"]
+  end
+
+  subgraph L1["Layer 1 - Substrate Abstraction Layer (SAL)"]
+    L1V["Virtual Memory Paging"]
+    L1D["Sandboxed Drivers"]
+    L1K["Kubernetes / Bare-Metal Infrastructure"]
+  end
+
+  L4P --> L4I
+  L4M --> L4I
+  L4F --> L4I
+
+  L4I --> L3O
+  L4I --> L3T
+  L4I --> L3R
+
+  L3O --> L2S
+  L3T --> L2G
+  L3R --> L2I
+
+  L2S --> L1V
+  L2G --> L1D
+  L2I --> L1K
+
+  classDef layer4 fill:#EAF2FF,stroke:#1D4ED8,stroke-width:2px,color:#0B1F44;
+  classDef layer3 fill:#E8FFF4,stroke:#047857,stroke-width:2px,color:#052E26;
+  classDef layer2 fill:#FFF7E6,stroke:#B45309,stroke-width:2px,color:#3B1D00;
+  classDef layer1 fill:#F3F4F6,stroke:#374151,stroke-width:2px,color:#111827;
+
+  class L4P,L4M,L4F,L4I layer4;
+  class L3O,L3T,L3R layer3;
+  class L2S,L2G,L2I layer2;
+  class L1V,L1D,L1K layer1;

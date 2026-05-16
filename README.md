@@ -121,6 +121,165 @@ USAGE proposes agent-runtime semantic attributes and events:
 - CNCF standardization path: [cncf-positioning.md](spec/cncf-positioning.md)
 - Standards-track roadmap: [standardization-roadmap.md](spec/standardization-roadmap.md)
 
+
+## Architecture Diagrams
+
+### 1) USAGE Protocol Stack
+Source: [usage-protocol-stack.mmd](diagrams/usage-protocol-stack.mmd)
+
+```mermaid
+graph TD
+  %% USAGE Protocol Stack
+  subgraph L4["Layer 4 - Cognitive Application Layer"]
+    L4P["Prompts"]
+    L4M["LLMs"]
+    L4F["CrewAI / LangChain Frameworks"]
+    L4I["Intent Engine"]
+  end
+
+  subgraph L3["Layer 3 - Governance and Aspect Layer"]
+    L3O["OPA Guardrails"]
+    L3T["Token Quota Budgeting"]
+    L3R["PII and Secret Redaction Proxy"]
+  end
+
+  subgraph L2["Layer 2 - Runtime and Execution Layer"]
+    L2S["State Machine Tracking"]
+    L2G["Asynchronous Signaling (SIG_PAUSE)"]
+    L2I["IPC Engine"]
+  end
+
+  subgraph L1["Layer 1 - Substrate Abstraction Layer (SAL)"]
+    L1V["Virtual Memory Paging"]
+    L1D["Sandboxed Drivers"]
+    L1K["Kubernetes / Bare-Metal Infrastructure"]
+  end
+
+  L4P --> L4I
+  L4M --> L4I
+  L4F --> L4I
+
+  L4I --> L3O
+  L4I --> L3T
+  L4I --> L3R
+
+  L3O --> L2S
+  L3T --> L2G
+  L3R --> L2I
+
+  L2S --> L1V
+  L2G --> L1D
+  L2I --> L1K
+
+  classDef layer4 fill:#EAF2FF,stroke:#1D4ED8,stroke-width:2px,color:#0B1F44;
+  classDef layer3 fill:#E8FFF4,stroke:#047857,stroke-width:2px,color:#052E26;
+  classDef layer2 fill:#FFF7E6,stroke:#B45309,stroke-width:2px,color:#3B1D00;
+  classDef layer1 fill:#F3F4F6,stroke:#374151,stroke-width:2px,color:#111827;
+
+  class L4P,L4M,L4F,L4I layer4;
+  class L3O,L3T,L3R layer3;
+  class L2S,L2G,L2I layer2;
+  class L1V,L1D,L1K layer1;
+```
+
+### 2) Myelin-AX Kubernetes Pod Topography
+Source: [myelin-ax-pod-topography.mmd](diagrams/myelin-ax-pod-topography.mmd)
+
+```mermaid
+graph LR
+  subgraph POD["Kubernetes Pod (The Myelin Sheath)"]
+    subgraph AB["Container: agent-brain (User Space)"]
+      AB1["Runs Unprivileged"]
+      AB2["No Egress Network Access"]
+    end
+
+    subgraph MP["Container: myelin-proxy (Kernel Space / Sidecar)"]
+      MP1["USAGE gRPC Server"]
+      MP2["Governance Enforcement"]
+    end
+
+    subgraph SB["Container: myelin-sandbox (Ephemeral Tool Worker)"]
+      SB1["Zero-Trust Tool Execution"]
+      SB2["RuntimeClass: gvisor / firecracker"]
+    end
+
+    AB1 <--> |"localhost:50051 (gRPC System Calls)"| MP1
+    MP2 -->|"Control Link: Spawn / Reap Tool Task"| SB1
+  end
+
+  LLM["External LLM Providers"]
+  OPA["Central OPA Gatekeeper Engine"]
+
+  MP2 -->|"Policy-Mediated Egress"| LLM
+  MP2 -->|"ValidateAction / Policy Decisions"| OPA
+```
+
+### 3) USAGE Process Lifecycle State Machine
+Source: [usage-lifecycle-state-machine.mmd](diagrams/usage-lifecycle-state-machine.mmd)
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending
+
+  Pending --> Active: Quota Approved & Identity Issued
+  Active --> Thinking: Inference / Tool Invocation Triggered
+  Thinking --> Paused: UsageYield Call / HITL Interrupt
+  Paused --> Active: Context PageIn / Token Resume
+
+  Active --> Terminated: Intent Met / Normal Execution End
+  Thinking --> Terminated: Quota Breach / End of Context Window
+  Paused --> Terminated: System TTL Expired / Manual Eviction
+
+  state Pending {
+    [*] --> PendingReady
+    PendingReady: Awaiting admission checks,\nquota reservation,\nand workload identity binding.
+  }
+
+  state Active {
+    [*] --> ActiveReady
+    ActiveReady: Session admitted and resumable.\nEligible for inference scheduling.
+  }
+
+  state Thinking {
+    [*] --> ThinkingLoop
+    ThinkingLoop: Model inference and tool orchestration loop.\nBudget and policy continuously enforced.
+  }
+
+  state Paused {
+    [*] --> PausedCheckpoint
+    PausedCheckpoint: Context serialized.\nAwaiting operator/human/runtime resume decision.
+  }
+
+  state Terminated {
+    [*] --> Finalized
+    Finalized: Session closed.\nResources reclaimed and audit finalized.
+  }
+```
+
+### 4) UML System Call Sequence (Tool Execution Flow)
+Source: [usage-tool-execution-sequence.mmd](diagrams/usage-tool-execution-sequence.mmd)
+
+```mermaid
+sequenceDiagram
+  participant AB as Agent Brain (User Space)
+  participant MP as Myelin Proxy (Sidecar Kernel)
+  participant PE as Policy Engine (OPA / Gatekeeper)
+  participant SD as Sandboxed Tool Driver
+
+  AB->>MP: UsageCallTool(tool_name, json_args)
+  Note right of MP: Pause brain thread and lock session context
+  MP->>PE: ValidateAction(payload)
+  PE-->>MP: AccessGranted: True
+
+  Note right of MP: Apply regex scrubbing for PII and secrets
+  MP->>SD: ExecuteTool(clean_payload)
+  Note right of SD: Execute inside RuntimeClass isolation (gVisor)
+  SD-->>MP: raw_stdout_string
+
+  Note right of MP: Compute token/resource metrics\nand persist context metadata
+  MP-->>AB: ToolResponse(safe_payload, metrics, status)
+```
+
 ## Appendix
 - Protobuf contracts: [asi.proto](proto/usage/v1/asi.proto)
 - JSON schema: [agent_manifest.schema.json](schemas/agent_manifest.schema.json)

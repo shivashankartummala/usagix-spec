@@ -1,0 +1,36 @@
+stateDiagram-v2
+  [*] --> Pending
+
+  Pending --> Active: Quota Approved & Identity Issued
+  Active --> Thinking: Inference / Tool Invocation Triggered
+  Thinking --> Paused: UsageYield Call / HITL Interrupt
+  Paused --> Active: Context PageIn / Token Resume
+
+  Active --> Terminated: Intent Met / Normal Execution End
+  Thinking --> Terminated: Quota Breach / End of Context Window
+  Paused --> Terminated: System TTL Expired / Manual Eviction
+
+  state Pending {
+    [*] --> PendingReady
+    PendingReady: Awaiting admission checks,\nquota reservation,\nand workload identity binding.
+  }
+
+  state Active {
+    [*] --> ActiveReady
+    ActiveReady: Session admitted and resumable.\nEligible for inference scheduling.
+  }
+
+  state Thinking {
+    [*] --> ThinkingLoop
+    ThinkingLoop: Model inference and tool orchestration loop.\nBudget and policy continuously enforced.
+  }
+
+  state Paused {
+    [*] --> PausedCheckpoint
+    PausedCheckpoint: Context serialized.\nAwaiting operator/human/runtime resume decision.
+  }
+
+  state Terminated {
+    [*] --> Finalized
+    Finalized: Session closed.\nResources reclaimed and audit finalized.
+  }

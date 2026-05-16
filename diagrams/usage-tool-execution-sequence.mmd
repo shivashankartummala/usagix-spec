@@ -1,0 +1,18 @@
+sequenceDiagram
+  participant AB as Agent Brain (User Space)
+  participant MP as Myelin Proxy (Sidecar Kernel)
+  participant PE as Policy Engine (OPA / Gatekeeper)
+  participant SD as Sandboxed Tool Driver
+
+  AB->>MP: UsageCallTool(tool_name, json_args)
+  Note right of MP: Pause brain thread and lock session context
+  MP->>PE: ValidateAction(payload)
+  PE-->>MP: AccessGranted: True
+
+  Note right of MP: Apply regex scrubbing for PII and secrets
+  MP->>SD: ExecuteTool(clean_payload)
+  Note right of SD: Execute inside RuntimeClass isolation (gVisor)
+  SD-->>MP: raw_stdout_string
+
+  Note right of MP: Compute token/resource metrics\nand persist context metadata
+  MP-->>AB: ToolResponse(safe_payload, metrics, status)
