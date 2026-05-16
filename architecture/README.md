@@ -2,24 +2,22 @@
 
 This directory contains architecture documentation, diagrams, and design rationale for the USAGIX specification.
 
-## Directory Structure
+## Reference Documents
 
-### [diagrams/](diagrams/)
-Architectural diagrams and visualizations:
-- **[trust-domains.mmd](diagrams/trust-domains.mmd)** — Trust domain separation diagram
-- **[protocol-stack.mmd](diagrams/protocol-stack.mmd)** — ASI protocol stack layers
-- **[agent-lifecycle.mmd](diagrams/agent-lifecycle.mmd)** — Agent runtime state machine
-- **[memory-model.mmd](diagrams/memory-model.mmd)** — Memory virtualization model (L1/L2/L3)
-- **[governance-flow.mmd](diagrams/governance-flow.mmd)** — Governance decision flow
-- **[checkpoint-flow.mmd](diagrams/checkpoint-flow.mmd)** — Checkpoint/restore process
+### Architectural Diagrams
+Available in [../diagrams/](../diagrams/):
+- **[protocol-stack.mmd](../diagrams/usage-protocol-stack.mmd)** — USAGIX protocol stack layers
+- **[agent-lifecycle.mmd](../diagrams/usage-lifecycle-state-machine.mmd)** — Agent runtime state machine
+- **[pod-topography.mmd](../diagrams/myelin-ax-pod-topography.mmd)** — Myelin-AX Kubernetes architecture
+- **[tool-execution.mmd](../diagrams/usage-tool-execution-sequence.mmd)** — Tool execution sequence
 
-### [documents/](documents/)
-Detailed architecture documentation:
-- **[trust-domains.md](documents/trust-domains.md)** — Trust domain architecture and security boundaries
-- **[protocol-stack.md](documents/protocol-stack.md)** — ASI gRPC protocol stack design
-- **[memory-model.md](documents/memory-model.md)** — Memory virtualization architecture
-- **[capability-system.md](documents/capability-system.md)** — Capability-based access control design
-- **[governance-engine.md](documents/governance-engine.md)** — Governance policy evaluation
+### Detailed Specifications
+Core architecture documents available in [../spec/](../spec/) and [../RFC/](../RFC/):
+- **[RFC-0001: Core Architecture](../RFC/rfc-0001-usagix-core.md)** — Trust domains, semantic types, formal contracts
+- **[RFC-0005: ASI System Calls](../RFC/rfc-0005-asi-system-calls.md)** — gRPC protocol stack design
+- **[RFC-0006: Security Model](../RFC/rfc-0006-security-model.md)** — Trust domain architecture and security boundaries
+- **[memory-model.md](../spec/memory-model.md)** — Memory virtualization architecture
+- **[security-model.md](../spec/security-model.md)** — Security model and threat analysis
 
 ## Architecture Overview
 
