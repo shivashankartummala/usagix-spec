@@ -89,6 +89,14 @@
               "minimum": 0,
               "default": 3600,
               "examples": [300, 3600, 86400]
+            },
+            "maxToolNestingDepth": {
+              "type": "integer",
+              "description": "MaxToolNestingDepth limits the maximum nesting depth of tool invocations. Prevents stack exhaustion and infinite recursion. Defaults to 10.",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "examples": [5, 10, 20]
             }
           }
         },
@@ -246,6 +254,39 @@
           }
         }
       }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Extensions is an optional block for vendor-specific infrastructure configurations and optimizations. This block allows substrate vendors (e.g., Myelin-AX, proprietary enterprise substrates) to declare implementation-specific settings while keeping all core USAGE properties strictly standardized and portable.",
+      "additionalProperties": true,
+      "examples": [
+        {
+          "myelin-ax": {
+            "interception-mode": "syscall-level",
+            "sidecar-cpu-limit": "500m",
+            "sidecar-memory-limit": "512Mi",
+            "opl-policies": ["pii-scrubbing", "secret-detection"]
+          },
+          "kubernetes": {
+            "node-affinity": {
+              "preferredDuringSchedulingIgnoredDuringExecution": [
+                {
+                  "weight": 100,
+                  "preference": {
+                    "matchExpressions": [
+                      {
+                        "key": "node-type",
+                        "operator": "In",
+                        "values": ["gpu"]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   },
   "examples": [
@@ -257,20 +298,21 @@
         "labels": {
           "environment": "production",
           "team": "research",
-          "domain": "nlp"
+          "domain": "knowledge-synthesis"
         }
       },
       "spec": {
         "runtime": {
           "profile": "standard",
           "maxTokensQuota": 10000000,
-          "maxConcurrentSessions": 5,
+          "maxConcurrentSessions": 3,
           "sessionTimeoutSeconds": 3600
         },
         "security": {
           "sandboxLevel": "moderate",
           "allowedTools": [
             "web.search",
+            "web.fetch",
             "database.query",
             "file.read"
           ],

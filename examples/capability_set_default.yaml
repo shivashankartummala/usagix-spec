@@ -1,0 +1,206 @@
+# Default Capability Set for Agents
+# This file defines the default set of capabilities granted to agents
+# that follow the principle of least privilege while enabling common operations.
+#
+# Usage: Bind this capability set to agents during UsageSpawn or via SetCapability
+# Author: USAGE Platform
+# Version: 1.0.0
+
+apiVersion: usage.io/v1
+kind: CapabilitySet
+metadata:
+  name: default-capabilities
+  namespace: default
+  labels:
+    tier: standard
+    environment: production
+
+spec:
+  # Capabilities are grouped by tool category for organizational clarity
+  capabilities:
+
+    # Database Access: Read-Only Queries
+    - id: db-query-select
+      resource: database.query
+      operation: SELECT
+      description: "Read-only database queries"
+      constraints:
+        time_window: "*"  # Always available
+        rate_limit: "1000 per minute"
+        data_minimization: "user_id,email,name,created_at"
+        table_allowlist: "users,products,transactions"
+        row_filter: "created_at > DATE_SUB(NOW(), INTERVAL 90 DAY)"
+        data_classification: "min: PUBLIC, max: INTERNAL"
+      issued_at: "2025-03-15T00:00:00Z"
+      expires_at: "2026-03-15T00:00:00Z"
+      issuer: "policy-engine"
+
+    # Database Access: No Write/Delete Permissions
+    # (Intentionally excluded to prevent accidental data loss)
+
+    # Slack Messaging: Channel-Restricted Posting
+    - id: slack-post-message
+      resource: slack.post_message
+      operation: POST
+      description: "Post messages to specific Slack channels"
+      constraints:
+        time_window: "*"
+        rate_limit: "100 per minute"
+        channel_allowlist: "#alerts,#monitoring,#logs"
+        message_max_length: 4000
+        allow_attachments: false
+        allow_mentions: false
+      issued_at: "2025-03-15T00:00:00Z"
+      expires_at: "2026-03-15T00:00:00Z"
+      issuer: "policy-engine"
+
+    # HTTP Requests: External API Calls (with domain restrictions)
+    - id: http-request-external
+      resource: http.request
+      operation: GET,POST
+      description: "Make HTTP requests to approved external APIs"
+      constraints:
+        time_window: "*"
+        rate_limit: "200 per minute"
+        domain_allowlist: |
+          api.github.com,
+          api.openweather.com,
+          api.example.com
+        timeout_seconds: 30
+        allow_redirects: true
+        max_response_size_bytes: 10485760  # 10 MB
+        allow_streaming: false
+        verify_tls: true
+      issued_at: "2025-03-15T00:00:00Z"
+      expires_at: "2026-03-15T00:00:00Z"
+      issuer: "policy-engine"
+
+    # File Operations: Read-Only Access
+    - id: filesystem-read
+      resource: filesystem.read
+      operation: READ
+      description: "Read files from designated directories"
+      constraints:
+        time_window: "*"
+        rate_limit: "1000 per minute"
+        path_allowlist: "/data/shared,/data/public"
+        max_file_size_bytes: 104857600  # 100 MB
+        file_extension_allowlist: "txt,json,csv,yaml,md"
+        include_directories: false  # Don't allow directory listing
+      issued_at: "2025-03-15T00:00:00Z"
+      expires_at: "2026-03-15T00:00:00Z"
+      issuer: "policy-engine"
+
+    # File Operations: No Write/Delete (preventing data loss)
+
+    # Search: Query Search Engine
+    - id: search-query
+      resource: search.query
+      operation: QUERY
+      description: "Search external search engine"
+      constraints:
+        time_window: "*"
+        rate_limit: "50 per minute"
+        index_allowlist: "public_web"
+        max_results: 10
+        query_timeout_seconds: 10
+        require_quoted_queries: false
+      issued_at: "2025-03-15T00:00:00Z"
+      expires_at: "2026-03-15T00:00:00Z"
+      issuer: "policy-engine"
+
+    # Email: Sending Notifications (no BCC, strict allowlist)
+    - id: email-send
+      resource: email.send
+      operation: SEND
+      description: "Send email notifications"
+      constraints:
+        time_window: "*"
+        rate_limit: "50 per minute"
+        recipient_allowlist: "team@example.com,alerts@example.com"
+        sender: "noreply@example.com"  # Fixed sender
+        allow_attachments: true
+        max_attachment_size_bytes: 10485760  # 10 MB
+        allow_bcc: false  # Prevent silent forwarding
+        allow_cc: false   # Prevent information leakage
+        subject_max_length: 200
+        body_max_length: 100000
+      issued_at: "2025-03-15T00:00:00Z"
+      expires_at: "2026-03-15T00:00:00Z"
+      issuer: "policy-engine"
+
+    # Logging: Emit Logs
+    - id: logging-emit
+      resource: logging.emit
+      operation: WRITE
+      description: "Emit log entries"
+      constraints:
+        time_window: "*"
+        rate_limit: "10000 per minute"
+        log_level_allowlist: "INFO,WARNING,ERROR"  # No DEBUG, TRACE
+        max_message_length: 1000
+        allowed_tags: "agent_execution,agent_metrics,agent_decisions"
+      issued_at: "2025-03-15T00:00:00Z"
+      expires_at: "2026-03-15T00:00:00Z"
+      issuer: "policy-engine"
+
+    # Metrics: Emit Metrics
+    - id: metrics-emit
+      resource: metrics.emit
+      operation: WRITE
+      description: "Emit metrics to monitoring system"
+      constraints:
+        time_window: "*"
+        rate_limit: "5000 per minute"
+        metric_prefix_allowlist: "agent_"
+        allowed_metric_types: "counter,gauge,histogram"  # No custom types
+      issued_at: "2025-03-15T00:00:00Z"
+      expires_at: "2026-03-15T00:00:00Z"
+      issuer: "policy-engine"
+
+    # Cloud Storage: Read-Only Access
+    - id: cloud-storage-read
+      resource: cloud_storage.read
+      operation: READ
+      description: "Read from cloud storage buckets"
+      constraints:
+        time_window: "*"
+        rate_limit: "200 per minute"
+        bucket_allowlist: "data-public,data-shared"
+        max_file_size_bytes: 1073741824  # 1 GB
+        allow_streaming: true
+      issued_at: "2025-03-15T00:00:00Z"
+      expires_at: "2026-03-15T00:00:00Z"
+      issuer: "policy-engine"
+
+  # Global settings applied across all capabilities in this set
+  defaults:
+    # If a constraint is not specified for a capability, use defaults
+    audit_all_access: true           # Log all tool invocations
+    require_explicit_consent: false  # Use capability ledger only
+    data_classification_min: PUBLIC
+    data_classification_max: CONFIDENTIAL
+    pii_handling: "redact_and_log"   # Redact PII before returning to agent
+    secret_handling: "block"         # Block if secrets detected
+
+  # Deprecation and versioning
+  deprecations: []  # No deprecated capabilities in v1.0.0
+
+  # Notes for maintainers
+  notes: |
+    This is the DEFAULT capability set providing:
+    - Read-only database access (SELECT only, no write/delete)
+    - Limited external API access (approved domains only)
+    - Slack posting to restricted channels
+    - File reading from safe directories
+    - Email sending to allowed recipients
+    - Logging and metrics
+
+    Notably ABSENT:
+    - No database write/delete (prevents accidental data loss)
+    - No shell/command execution (prevents code injection)
+    - No arbitrary file write (prevents filesystem abuse)
+    - No email BCC (prevents information leakage)
+
+    Use capability_set_privileged.yaml for agents requiring elevated access.
+    Use capability_set_strict.yaml for highly restricted agents.

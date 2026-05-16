@@ -119,9 +119,30 @@ System-call semantics: [asi-system-calls.md](spec/asi-system-calls.md)
 <details>
 <summary>Expand Security Model</summary>
 
-Security boundaries and mandatory controls are defined in:
-- [security-model.md](spec/security-model.md)
-- [threat-model.md](spec/threat-model.md)
+Source: [security-model.md](spec/security-model.md)
+
+## Objectives
+- Constrain blast radius of compromised cognition workloads.
+- Prevent direct credential and network exfiltration.
+- Enforce policy on every side effect.
+
+## Mandatory Controls
+- Sidecar governance enforcement out-of-process.
+- Least-privilege tool capability allowlists.
+- Runtime sandboxing for dynamic code execution.
+- Immutable audit trail for syscall decisions.
+- Identity-bound quotas and policy snapshots.
+
+## Trust Domains
+- Domain A: Untrusted cognition (`agent-brain`).
+- Domain B: Trusted governance (`myelin-proxy`).
+- Domain C: Isolated executor (`myelin-sandbox`).
+- Domain D: Control plane (operator, admission, policy backend).
+
+## Security Invariants
+- A cannot directly invoke D or external networks.
+- A -> side effects MUST traverse B.
+- C instances are ephemeral and non-reusable.
 
 </details>
 
@@ -129,8 +150,27 @@ Security boundaries and mandatory controls are defined in:
 <details>
 <summary>Expand Memory Model</summary>
 
-USAGE defines hierarchical memory tiers (L1/L2/L3), eviction semantics, and page-out contracts:
-- [memory-model.md](spec/memory-model.md)
+Source: [memory-model.md](spec/memory-model.md)
+
+## Tiers
+- L1 Hot Context: model-visible active window.
+- L2 Warm Semantic Cache: low-latency retrieved context.
+- L3 Cold Persistent Store: long-term durable memory.
+
+## Page Semantics
+- Page Unit: opaque context segment with policy labels.
+- Page Metadata: `{page_id, hash, sensitivity, ttl, lineage}`.
+- `UsageMemPageOut` demotes pages L1->L2/L3.
+
+## Invariants
+- Sensitive pages MUST carry policy labels across tiers.
+- Page references MUST be integrity-verifiable.
+- Expired pages MUST be unavailable to retrieval unless retention exception applies.
+
+## Memory Wall Handling
+- Trigger demotion by token pressure threshold.
+- Maintain retrieval quality via semantic compaction.
+- Avoid unbounded prompt growth by bounded L1 resident set.
 
 </details>
 
@@ -138,8 +178,26 @@ USAGE defines hierarchical memory tiers (L1/L2/L3), eviction semantics, and page
 <details>
 <summary>Expand Scheduling Model</summary>
 
-USAGE introduces inference-aware scheduling primitives (token budget classes, context pressure, provider quota backpressure):
-- [scheduling-model.md](spec/scheduling-model.md)
+Source: [scheduling-model.md](spec/scheduling-model.md)
+
+## Problem
+CPU/RAM scheduling is insufficient for cognitive workloads that are quota-bound by tokens, context windows, and provider rate limits.
+
+## Scheduling Dimensions
+- Compute: CPU, memory, accelerator
+- Cognitive: token budget, token rate, context pressure
+- External: provider QPS/TPM, tool concurrency
+
+## Policies
+- Token Budget Class: `small`, `medium`, `large` with hard upper bounds.
+- Context Pressure Index (CPI): ratio of L1 occupancy to configured max.
+- Provider Backpressure State: normal, degraded, blocked.
+
+## Decisions
+- Admit when quotas and policy permit.
+- Preempt/terminate when token budget exhausted.
+- Force yield when CPI exceeds threshold.
+- Defer tool calls under provider backpressure.
 
 </details>
 
@@ -147,8 +205,29 @@ USAGE introduces inference-aware scheduling primitives (token budget classes, co
 <details>
 <summary>Expand Governance Model</summary>
 
-USAGE governance pipeline externalizes policy, redaction, retries, idempotency, and audit semantics:
-- [governance-model.md](spec/governance-model.md)
+Source: [governance-model.md](spec/governance-model.md)
+
+## Pipeline
+1. Parse syscall request.
+2. Resolve identity and session policy snapshot.
+3. Run OPA policy evaluation.
+4. Apply redaction/scrubbing transforms.
+5. Enforce budget and concurrency guards.
+6. Execute or deny.
+7. Emit audit and telemetry records.
+
+## Idempotency
+- Tool calls SHOULD carry idempotency keys.
+- Retries MUST preserve policy context and audit correlation ids.
+
+## Audit
+Each decision MUST record:
+- session id
+- syscall
+- policy bundle version
+- allow/deny outcome
+- rationale code
+- latency and resource metrics
 
 </details>
 
@@ -156,8 +235,24 @@ USAGE governance pipeline externalizes policy, redaction, retries, idempotency, 
 <details>
 <summary>Expand Multi-Agent Coordination Model</summary>
 
-USAGE models supervised process trees, parent-child ownership, escalation, and deadlock handling:
-- [coordination-model.md](spec/coordination-model.md)
+Source: [coordination-model.md](spec/coordination-model.md)
+
+## Process Tree
+USAGE models agent orchestration as a supervision tree.
+- Parent sessions own child sessions.
+- Ownership includes budget partitioning and termination semantics.
+
+## Spawn Semantics
+- Parent MAY allocate sub-budget to child at `UsageSpawn`.
+- Child MUST inherit policy floor from parent; narrowing is allowed, widening is denied.
+
+## Failure Semantics
+- Child failure can be `isolated` or `escalating` based on parent policy.
+- Cascading termination behavior is explicit (`NONE`, `CHILDREN`, `SUBTREE`).
+
+## Deadlock and Loop Control
+- Maximum recursion depth MUST be bounded.
+- Repeated identical tool-call signatures SHOULD trigger circuit-breaker policy.
 
 </details>
 
@@ -176,15 +271,22 @@ Reference CRDs and lifecycle mappings:
 <details>
 <summary>Expand Compliance Suite</summary>
 
-USAGE conformance is profile-based:
-- Core ASI Conformance
-- Governance Conformance
-- Isolation Conformance
-- Observability Conformance
+Source: [compliance-suite.md](spec/compliance-suite.md)
 
-Suite design and test matrix:
-- [compliance-suite.md](spec/compliance-suite.md)
-- [asi-compliance-tests.md](compliance-tests/asi-compliance-tests.md)
+## Profiles
+- Core Profile: ASI syscall semantics and lifecycle state machine.
+- Governance Profile: policy enforcement, redaction, idempotency.
+- Isolation Profile: network isolation and sandbox integrity.
+- Observability Profile: required events, attributes, and traces.
+
+## Test Categories
+- Protocol tests: request/response compatibility and error codes.
+- Behavioral tests: legal/illegal state transitions.
+- Security tests: deny-path guarantees and boundary bypass attempts.
+- Performance tests: control-plane overhead and signal latency.
+
+## Pass Criteria
+Implementation is compliant when all mandatory tests pass for declared profile.
 
 </details>
 
@@ -192,8 +294,40 @@ Suite design and test matrix:
 <details>
 <summary>Expand OpenTelemetry Semantic Conventions Proposal</summary>
 
-USAGE proposes agent-runtime semantic attributes and events:
-- [otel-semconv-proposal.md](spec/otel-semconv-proposal.md)
+Source: [otel-semconv-proposal.md](spec/otel-semconv-proposal.md)
+
+## Scope
+Defines telemetry attributes and events for USAGE substrates.
+
+## Resource Attributes
+- `usage.substrate.name`
+- `usage.substrate.version`
+- `usage.session.id`
+- `usage.agent.blueprint`
+
+## Span Attributes
+- `usage.syscall.name`
+- `usage.syscall.result`
+- `usage.policy.decision`
+- `usage.policy.bundle.version`
+- `usage.token.consumed`
+- `usage.token.remaining`
+- `usage.memory.tier.target`
+- `usage.tool.name`
+
+## Events
+- `usage.state.transition`
+- `usage.signal.delivered`
+- `usage.pageout.completed`
+- `usage.tool.denied`
+- `usage.quota.exhausted`
+
+## Metric Suggestions
+- `usage_syscall_latency_ms`
+- `usage_policy_denials_total`
+- `usage_tokens_consumed_total`
+- `usage_active_sessions`
+- `usage_pageout_operations_total`
 
 </details>
 
@@ -203,6 +337,72 @@ USAGE proposes agent-runtime semantic attributes and events:
 
 - CNCF standardization path: [cncf-positioning.md](spec/cncf-positioning.md)
 - Standards-track roadmap: [standardization-roadmap.md](spec/standardization-roadmap.md)
+
+</details>
+
+## Threat Model
+<details>
+<summary>Expand Threat Model</summary>
+
+Source: [threat-model.md](spec/threat-model.md)
+
+## Threat Classes
+- Prompt injection
+- Tool hijacking
+- Credential exfiltration
+- Lateral movement
+- Sandbox escape
+- Poisoned retrieval memory
+- Recursive execution loops
+- Denial-of-wallet
+- Covert prompt exfiltration
+
+## STRIDE Mapping (Summary)
+- Spoofing: forged session or tool identity
+- Tampering: checkpoint/page mutation
+- Repudiation: missing immutable audit records
+- Information Disclosure: secret leakage via outputs/tools
+- Denial of Service: token or tool saturation
+- Elevation of Privilege: bypassing tool/policy boundary
+
+## Mitigation Matrix
+- Prompt injection -> policy-typed tool arguments + deny-by-default tool scopes
+- Tool hijacking -> signed tool registry + strict name/version pinning
+- Credential exfiltration -> no static creds in cognition domain, proxy-issued ephemeral credentials
+- Lateral movement -> egress-deny network policy and namespace segmentation
+- Sandbox escape -> hardened runtimeclass, seccomp, read-only FS
+- Denial-of-wallet -> token budgets, recursion limits, per-session circuit breakers
+- Recursive loops -> supervision depth limits and mandatory yield checkpoints
+
+</details>
+
+## ASI Compliance Tests
+<details>
+<summary>Expand ASI Compliance Tests</summary>
+
+Source: [asi-compliance-tests.md](compliance-tests/asi-compliance-tests.md)
+
+## Core Lifecycle
+- Spawn returns `PENDING`.
+- Illegal transitions are rejected.
+- Terminated sessions reject further syscalls.
+
+## Syscall Behavior
+- `UsageSignal` idempotency by `(session_id, sequence)`.
+- `UsageCallTool` deny path includes policy decision metadata.
+- `UsageMemPageOut` returns integrity-reference per page.
+
+## Governance
+- Capability violation yields `PERMISSION_DENIED`.
+- Token exhaustion yields terminal state and `RESOURCE_EXHAUSTED` semantics.
+
+## Isolation
+- Attempted direct egress from cognition container fails.
+- Dynamic code execution occurs only in sandbox profile.
+
+## Observability
+- Required state-transition events emitted.
+- Required attributes present on syscall spans.
 
 </details>
 

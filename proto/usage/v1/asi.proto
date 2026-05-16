@@ -3,136 +3,232 @@ syntax = "proto3";
 package usage.v1;
 
 option go_package = "github.com/usage-spec/usage-go/proto/usage/v1";
+option java_package = "com.usage.v1";
+option java_multiple_files = true;
+option csharp_namespace = "Usage.V1";
 
-service UsageSubstrateCore {
-  rpc UsageSpawn(SpawnRequest) returns (SpawnResponse);
-  rpc UsageYield(YieldRequest) returns (YieldResponse);
-  rpc UsageSignal(SignalRequest) returns (SignalResponse);
-  rpc UsageMemPageOut(PageOutRequest) returns (PageOutResponse);
-  rpc UsageCallTool(ToolRequest) returns (ToolResponse);
-}
-
-enum AgentState {
-  AGENT_STATE_UNSPECIFIED = 0;
-  AGENT_STATE_PENDING = 1;
-  AGENT_STATE_ACTIVE = 2;
-  AGENT_STATE_THINKING = 3;
-  AGENT_STATE_PAUSED = 4;
-  AGENT_STATE_TERMINATED = 5;
-}
-
+// AgentSignal defines control signals that can be sent to a USAGE-compliant agent process.
 enum AgentSignal {
-  AGENT_SIGNAL_UNSPECIFIED = 0;
-  AGENT_SIGNAL_PAUSE = 1;
-  AGENT_SIGNAL_INTERRUPT = 2;
-  AGENT_SIGNAL_TERMINATE = 3;
+  SIG_AGENT_UNSPECIFIED = 0;  // Unspecified signal; invalid for transmission.
+  SIG_AGENT_TERMINATE = 1;    // Terminate the agent process immediately. Agent must clean up and enter Terminated state.
+  SIG_AGENT_PAUSE = 2;        // Pause the agent process. Agent transitions to Paused state, preserving all state.
+  SIG_AGENT_INTERRUPT = 3;    // Interrupt the current operation. Agent may pause reasoning and yield early.
 }
 
+// MemoryTier enumerates the storage tiers available in the USAGE memory virtualization system.
 enum MemoryTier {
-  MEMORY_TIER_UNSPECIFIED = 0;
-  MEMORY_TIER_L2_WARM = 1;
-  MEMORY_TIER_L3_COLD = 2;
+  TIER_UNSPECIFIED = 0;           // Unspecified tier; invalid for operations.
+  TIER_L1_CONTEXT_WINDOW = 1;     // Hot, in-process memory. The active cognitive context window.
+  TIER_L2_VECTOR_CACHE = 2;       // Warm cache tier (SSD, Redis, pgvector, in-memory databases). Fast access, moderate capacity.
+  TIER_L3_COLD_STORAGE = 3;       // Cold storage tier (S3, GCS, blob stores). Slow access, high capacity, persistent.
 }
 
-enum CascadeMode {
-  CASCADE_MODE_UNSPECIFIED = 0;
-  CASCADE_MODE_NONE = 1;
-  CASCADE_MODE_CHILDREN = 2;
-  CASCADE_MODE_SUBTREE = 3;
+// AgentState represents the current operational state of a USAGE-compliant agent process.
+enum AgentState {
+  STATE_UNSPECIFIED = 0;  // Unspecified state; should not occur in compliant implementations.
+  STATE_PENDING = 1;      // Agent spawned but not yet activated with identity context.
+  STATE_ACTIVE = 2;       // Agent has established identity and is ready to reason.
+  STATE_THINKING = 3;     // Agent is actively engaged in inference or planning.
+  STATE_PAUSED = 4;       // Agent has yielded control and is awaiting action from substrate.
+  STATE_TERMINATED = 5;   // Agent process has concluded; all resources released.
 }
 
-message QuotaSpec {
-  uint64 max_tokens = 1;
-  uint32 max_concurrent_tools = 2;
-  uint32 max_recursion_depth = 3;
+// CheckpointHeader encodes standardized metadata about a serialized agent context.
+// This header is NOT opaque and MUST be inspected by substrates before storage.
+message CheckpointHeader {
+  // format_version indicates the checkpoint format version. Currently "1.0".
+  string format_version = 1;
+  
+  // checkpoint_timestamp is a Unix timestamp (seconds since epoch) marking when the checkpoint was created.
+  int64 checkpoint_timestamp = 2;
+  
+  // total_tokens_consumed is the cumulative token count at checkpoint time.
+  // Used for quota enforcement and budget reconciliation.
+  uint64 total_tokens_consumed = 3;
+  
+  // active_attention_window_indices is a list of attention head indices currently active in the model context.
+  // Allows substrate to validate that resumed context aligns with model capabilities.
+  repeated int32 active_attention_window_indices = 4;
+  
+  // current_tool_call_depth is the nesting depth of active tool invocations.
+  // Substrate verifies this is <= max_tool_nesting_depth to prevent stack exhaustion.
+  int32 current_tool_call_depth = 5;
+  
+  // open_capability_tokens is a list of capability names the agent currently holds a token for.
+  // Allows substrate to verify no capability escalation occurred since spawn.
+  repeated string open_capability_tokens = 6;
+  
+  // memory_tier_state maps memory tier enum to a URI/locator of paged content.
+  // Example: TIER_L2_VECTOR_CACHE -> "redis://cache:6379/session-embeddings"
+  map<int32, string> memory_tier_locators = 7;
+  
+  // context_hash is a cryptographic hash (SHA-256) of the opaque_payload.
+  // Allows substrate to detect corruption before resumption.
+  string context_hash = 8;
+  
+  // governance_compliance_metadata is a JSON-encoded string containing policy compliance metadata.
+  // Example: {"last_policy_audit_timestamp": 1715850000, "compliance_check_passed": true}
+  string governance_compliance_metadata = 9;
 }
 
+// UsageSubstrateCore is the main gRPC service that defines the Agent Substrate Interface (ASI).
+// All USAGE-compliant substrates must implement this service.
+service UsageSubstrateCore {
+  // UsageSpawn initializes a new agent process with the specified configuration and capabilities.
+  // The agent enters the Pending state and waits for the substrate to activate its identity boundary.
+  rpc UsageSpawn(SpawnRequest) returns (SpawnResponse);
+  
+  // UsageYield allows the agent to serialize its state and yield control back to the substrate.
+  // This is used for checkpointing, memory management, and governance evaluations.
+  rpc UsageYield(YieldRequest) returns (YieldResponse);
+  
+  // UsageMemPageOut triggers memory tier transitions for the agent.
+  // The agent requests that token context be moved from a hotter tier to a cooler tier.
+  rpc UsageMemPageOut(PageOutRequest) returns (PageOutResponse);
+  
+  // UsageMemPageIn retrieves paged context from cooler tiers back into a hotter tier.
+  // This completes the virtual memory control loop, allowing agents to rehydrate historical context on demand.
+  // Substrate enforces access control and governance policies during re-hydration.
+  rpc UsageMemPageIn(PageInRequest) returns (PageInResponse);
+  
+  // UsageSignal delivers a control signal to the agent process.
+  // Signals include termination, pause, and interrupt directives.
+  rpc UsageSignal(SignalRequest) returns (SignalResponse);
+  
+  // UsageCallTool invokes an external tool within the agent's governance boundary.
+  // Tool execution is gated by the agent's capability set; unauthorized tool invocations are rejected.
+  rpc UsageCallTool(ToolRequest) returns (ToolResponse);
+  
+  // UsageCallToolStream is a bidirectional streaming variant of UsageCallTool.
+  // Used for long-running tools, large data payloads, or multi-phase tool invocations.
+  // Reduces memory overhead and head-of-line blocking vs. synchronous JSON encoding.
+  rpc UsageCallToolStream(stream ToolRequest) returns (stream ToolResponse);
+}
+
+// SpawnRequest is used to initialize a new agent process.
 message SpawnRequest {
-  string request_id = 1;
-  string parent_session_id = 2;
-  string sovereign_agent_ref = 3;
-  repeated string capabilities = 4;
-  map<string, string> environment = 5;
-  QuotaSpec quota = 6;
-  string policy_bundle_version = 7;
-  CascadeMode cascade_mode = 8;
+  uint64 parent_pid = 1;
+  repeated string capabilities = 2;
+  map<string, string> environment = 3;
+  uint64 max_tokens_quota = 4;
+  string sandbox_level = 5;
+  int32 max_tool_nesting_depth = 6;  // Maximum depth of nested tool invocations. Prevents stack exhaustion.
 }
 
+// SpawnResponse is returned after a successful agent spawn operation.
 message SpawnResponse {
   string session_id = 1;
-  AgentState state = 2;
-  string supervision_path = 3;
-  int64 started_unix_ms = 4;
+  AgentState initial_state = 2;
+  string state_metadata = 3;
 }
 
+// CheckpointHeaderAndPayload combines the structured header with opaque payload.
+// This structure ensures portability while allowing vendor-specific optimizations.
+message CheckpointHeaderAndPayload {
+  // header is the structured, inspectable checkpoint metadata (NOT opaque).
+  CheckpointHeader header = 1;
+  
+  // opaque_payload is the raw, vendor-specific context serialization.
+  // Only the original substrate that created this payload can meaningfully deserialize it.
+  // However, the header provides enough information for any substrate to make storage/governance decisions.
+  bytes opaque_payload = 2;
+}
+
+// YieldRequest is used by the agent to serialize its state and yield control to the substrate.
 message YieldRequest {
-  string request_id = 1;
-  string session_id = 2;
-  bytes checkpoint_blob = 3;
+  string session_id = 1;
+  
+  // checkpoint is a structured checkpoint containing both standardized header and opaque payload.
+  // Replaces the old completely-opaque context_state_blob.
+  CheckpointHeaderAndPayload checkpoint = 2;
+  
+  AgentState current_state = 3;
   uint64 tokens_consumed = 4;
-  string checkpoint_reason = 5;
 }
 
+// YieldResponse acknowledges a successful state serialization and yield operation.
 message YieldResponse {
-  bool accepted = 1;
+  bool acknowledged = 1;
   string checkpoint_id = 2;
-  AgentState state = 3;
 }
 
-message SignalRequest {
-  string request_id = 1;
-  string session_id = 2;
-  AgentSignal signal = 3;
-  uint64 sequence = 4;
-  string reason = 5;
-}
-
-message SignalResponse {
-  bool delivered = 1;
-  AgentState new_state = 2;
-  int64 transition_unix_ms = 3;
-}
-
-message MemoryPage {
-  string page_id = 1;
-  string content_hash = 2;
-  string sensitivity = 3;
-  bytes payload = 4;
-}
-
+// PageOutRequest triggers memory tier transitions from hotter to cooler tiers.
 message PageOutRequest {
-  string request_id = 1;
-  string session_id = 2;
-  MemoryTier target_tier = 3;
-  repeated MemoryPage pages = 4;
+  string session_id = 1;
+  MemoryTier source_tier = 2;      // The tier to evict from (e.g., TIER_L1_CONTEXT_WINDOW).
+  MemoryTier target_tier = 3;      // The tier to evict to (e.g., TIER_L2_VECTOR_CACHE or TIER_L3_COLD_STORAGE).
+  string token_payload = 4;        // Serialized context being paged out.
+  map<string, string> metadata = 5; // Optional metadata for substrate optimization (e.g., access patterns, TTL hints).
 }
 
-message PageOutReference {
-  string page_id = 1;
-  string reference = 2;
-}
-
+// PageOutResponse provides addressing information for the paged-out context.
 message PageOutResponse {
-  MemoryTier tier = 1;
-  repeated PageOutReference references = 2;
-  int64 completed_unix_ms = 3;
+  string address_reference = 1;    // Pointer/locator in target tier (e.g., "s3://bucket/path" or "redis://key").
+  MemoryTier tier_acknowledged = 2;
+  int64 storage_timestamp = 3;
 }
 
+// PageInRequest retrieves paged context from cooler tiers back into a hotter tier.
+// Completes the virtual memory control loop for true demand-paged context management.
+message PageInRequest {
+  string session_id = 1;
+  string address_reference = 2;    // The address/locator previously returned by PageOutResponse.
+  MemoryTier source_tier = 3;      // The tier to retrieve from (e.g., TIER_L2_VECTOR_CACHE or TIER_L3_COLD_STORAGE).
+  MemoryTier target_tier = 4;      // The tier to hydrate into (typically TIER_L1_CONTEXT_WINDOW).
+  
+  // decryption_context allows the substrate to apply governance policies during re-hydration.
+  // Example: {"require_audit_log": true, "apply_content_filter": true}
+  string decryption_context = 5;
+}
+
+// PageInResponse returns the re-hydrated context payload.
+message PageInResponse {
+  string token_payload = 1;        // The retrieved context, ready for insertion into the target tier.
+  MemoryTier tier_retrieved_from = 2;
+  int64 retrieval_timestamp = 3;
+  uint32 retrieval_time_ms = 4;    // Wall-clock time to retrieve from source tier.
+}
+
+// SignalRequest is used to send control signals to the agent process.
+message SignalRequest {
+  string session_id = 1;
+  AgentSignal signal = 2;
+}
+
+// SignalResponse acknowledges successful signal delivery and state transition.
+message SignalResponse {
+  bool signal_accepted = 1;
+  AgentState new_state = 2;
+  int64 transition_timestamp = 3;
+}
+
+// ToolRequest is used to invoke an external tool within the agent's governance boundary.
 message ToolRequest {
-  string request_id = 1;
-  string session_id = 2;
-  string tool_name = 3;
-  string tool_version = 4;
-  bytes arguments_json = 5;
-  string idempotency_key = 6;
-  uint32 timeout_ms = 7;
+  string session_id = 1;
+  string tool_registry_name = 2;
+  
+  // arguments can be either JSON-encoded or a reference to large data.
+  oneof arguments {
+    string arguments_json = 3;      // For small/medium tool arguments (< 1MB recommended).
+    string arguments_reference = 4; // For large data: memory-mapped reference or S3 URI.
+  }
+  
+  // streaming_mode indicates whether the tool invocation should use streaming.
+  // true: use UsageCallToolStream for long-running tools or large payloads.
+  // false: synchronous single-response mode.
+  bool streaming_mode = 5;
 }
 
+// ToolResponse returns the result of a tool invocation.
 message ToolResponse {
-  bool success = 1;
-  bytes result_json = 2;
-  string error_code = 3;
-  string error_message = 4;
-  uint32 latency_ms = 5;
-  string policy_decision_id = 6;
+  bool execution_success = 1;
+  
+  // result can be either JSON-encoded or a reference to large data.
+  oneof result {
+    string result_json = 2;         // For small/medium results.
+    string result_reference = 3;    // For large data: memory-mapped reference or S3 URI.
+  }
+  
+  uint32 execution_time_ms = 4;
+  string error_message = 5;
 }

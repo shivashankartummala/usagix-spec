@@ -1,0 +1,388 @@
+# Strict Governance Policy for Highly-Regulated Agents
+# This governance policy implements defense-in-depth controls suitable for:
+# - HIPAA-regulated environments (healthcare data)
+# - PCI-DSS compliance (payment data)
+# - SOC2 Type II audited systems
+# - GDPR-compliant deployments
+#
+# Features:
+# - Strict time windows (e.g., 9am-5pm business hours only)
+# - Data classification enforcement
+# - Rate limiting with per-tool caps
+# - Comprehensive audit requirements
+# - Mandatory re-authentication for sensitive operations
+# - Encryption enforcement for sensitive data
+#
+# Usage: Bind this policy to agents requiring high governance
+# Author: USAGE Platform - Compliance Team
+# Version: 1.0.0
+
+apiVersion: usage.io/v1
+kind: GovernancePolicy
+metadata:
+  name: strict-governance-hipaa
+  namespace: compliance
+  labels:
+    tier: strict
+    environment: production
+    compliance_framework: HIPAA
+    compliance_framework: PCI-DSS
+    compliance_framework: SOC2
+
+spec:
+  # Applicability rules: which agents this policy applies to
+  applicability:
+    agent_labels:
+      compliance_tier: strict
+      environment: production
+    namespaces:
+      - healthcare
+      - payments
+      - financial
+    excluded_agents: []
+
+  # Token budget enforcement
+  tokens:
+    # Strict daily limit per agent
+    daily_quota_per_agent: 100000  # 100K tokens/day max
+
+    # Time-based quotas
+    quotas:
+      - window: "DAILY"
+        limit: 100000
+        reset_time: "00:00:00 UTC"
+      - window: "HOURLY"
+        limit: 10000
+        reset_time: "top_of_hour"
+      - window: "MINUTE"
+        limit: 500
+        reset_time: "top_of_minute"
+
+    # Warnings
+    warn_at_percentage: 80      # Warn when 80% consumed
+    warn_at_percentage: 95      # Critical warning at 95%
+
+    # Token burn rate limits (prevent runaway loops)
+    max_tokens_per_tool_call: 5000  # Max 5K per tool invocation
+    max_tokens_per_minute: 1000     # Max 1K per minute aggregate
+
+    # Token consumption tracking
+    track_inference_tokens: true
+    track_tool_output_tokens: true
+    enable_token_prediction: true  # Predict if budget will be exceeded
+
+  # Tool execution constraints
+  tool_execution:
+    # Default timeout for all tools
+    default_timeout_seconds: 30
+    max_timeout_seconds: 300  # Never allow > 5 min
+
+    # Tool call depth (prevent exponential explosion)
+    max_nesting_depth: 3
+    max_nesting_depth_per_tool:
+      database.query: 2
+      http.request: 2
+      email.send: 1  # No nested email sending
+
+    # Tool rate limiting
+    global_rate_limit: "1000 per minute"
+    per_tool_rate_limits:
+      database.query: "200 per minute"
+      database.write: "50 per minute"  # Much stricter for writes
+      email.send: "20 per minute"
+      slack.post_message: "100 per minute"
+      http.request: "500 per minute"
+
+    # Tool-specific execution constraints
+    allowed_tool_categories:
+      - database_read
+      - email_send
+      - slack_message
+      - http_get  # GET only, no POST/PUT/DELETE
+      - logging
+      - metrics
+
+    denied_tool_categories:
+      - shell_execution
+      - code_compilation
+      - binary_execution
+      - privilege_escalation
+
+  # Data access and classification
+  data_classification:
+    # Minimum classification: agents cannot access below this level
+    min_data_classification: PUBLIC
+
+    # Maximum classification: agents cannot access above this level
+    max_data_classification: INTERNAL  # No CONFIDENTIAL or RESTRICTED
+
+    # Special handling for sensitive data
+    sensitive_data_handling:
+      PII:
+        detection_enabled: true
+        detection_method: "regex,ml_classifier"
+        handling: "redact_and_log"
+        log_redacted_values: true
+        allow_agent_access: false
+
+      PHI:  # Protected Health Information (HIPAA)
+        detection_enabled: true
+        detection_method: "regex"
+        handling: "block"  # Block PHI entirely
+        log_attempts: true
+        alert_on_detection: true
+
+      PCI:  # Payment Card Information
+        detection_enabled: true
+        detection_method: "regex"
+        handling: "block"  # Block PCI data
+        log_attempts: true
+        alert_on_detection: true
+
+      Secrets:  # API keys, passwords, tokens
+        detection_enabled: true
+        detection_method: "pattern_database"
+        handling: "block"
+        log_attempts: true
+        alert_on_detection: true
+        terminate_on_detection: true  # Terminate agent if it touches secrets
+
+  # Time-based access controls
+  time_controls:
+    # Agents can only operate during business hours
+    business_hours_only: true
+    allowed_hours: "09:00-17:00"
+    allowed_timezones: "America/New_York"
+
+    # Holiday blackout dates (no agent execution)
+    blackout_dates:
+      - "2025-12-25"  # Christmas
+      - "2025-01-01"  # New Year
+      - "2025-07-04"  # Independence Day
+
+    # Weekly schedule: certain tools only on certain days
+    weekly_schedule:
+      - day: "MONDAY-FRIDAY"
+        allowed_tools: "database.query,email.send,slack.post_message"
+      - day: "SATURDAY-SUNDAY"
+        allowed_tools: "logging,metrics"  # Monitoring only on weekends
+
+  # Capability management
+  capabilities:
+    # Require explicit approval for sensitive capabilities
+    require_approval:
+      - database.write
+      - database.delete
+      - email.send
+      - payment_processing.charge
+
+    # Capabilities that expire quickly
+    short_lived_capabilities:
+      database.write:
+        ttl_minutes: 60  # 1 hour max
+      payment_processing.charge:
+        ttl_minutes: 15  # 15 minutes max
+
+    # Capabilities that require re-authentication
+    require_reauthentication:
+      - database.write
+      - email.send
+      - payment_processing.charge
+
+    # Capability revocation on policy violation
+    auto_revoke_on_violation: true
+    violations_before_revocation: 3
+
+  # Access logging and audit
+  audit:
+    # Log all decisions (allow and deny)
+    log_all_decisions: true
+    log_decision_rationale: true  # Why was decision made?
+    log_policy_version: true       # Which policy version decided?
+
+    # Immutable audit trail
+    audit_sink:
+      type: "SYSLOG"
+      endpoint: "syslog.internal:514"
+      protocol: "TLS"
+      verify_certificate: true
+
+    # Compliance audit trails
+    compliance_logging:
+      log_data_classifications: true
+      log_pii_detections: true
+      log_policy_violations: true
+      log_capability_changes: true
+      log_token_budget_changes: true
+
+    # Audit log retention
+    retention_days: 365  # Keep for 1 year (HIPAA requirement)
+    immutable_storage: true
+
+  # Encryption and data protection
+  encryption:
+    # Enforce encryption for data in transit
+    tls_required: true
+    tls_min_version: "1.3"
+    tls_cipher_suites_required:
+      - "TLS_AES_256_GCM_SHA384"
+      - "TLS_CHACHA20_POLY1305_SHA256"
+
+    # Enforce encryption for data at rest (cold storage)
+    encryption_at_rest_required: true
+    encryption_algorithm: "AES-256-CTR"
+    encryption_key_rotation_days: 90
+
+    # Encryption for sensitive data (PII, PHI, PCI)
+    encrypt_pii: true
+    encrypt_phi: true
+    encrypt_pci: true
+
+  # Network and isolation controls
+  network:
+    # Network egress allowlist
+    egress_allowlist:
+      - "database.internal:5432"
+      - "slack.com:443"
+      - "api.github.com:443"
+
+    # Deny all other external access
+    egress_default_deny: true
+
+    # No side-channel network access
+    prevent_dns_tunneling: true
+    prevent_icmp_tunneling: true
+
+  # Governance policy violations and remediation
+  violations:
+    # Action to take on policy violation
+    default_action: "LOG_AND_DENY"
+
+    # Specific violation handlers
+    violation_handlers:
+      - violation_type: "BUDGET_EXCEEDED"
+        action: "DENY"
+        notify: "policy-team@example.com"
+
+      - violation_type: "DATA_CLASSIFICATION_VIOLATION"
+        action: "DENY"
+        notify: "security-team@example.com"
+        alert_severity: "CRITICAL"
+
+      - violation_type: "TIME_WINDOW_VIOLATION"
+        action: "DENY"
+        notify: null  # Silent
+
+      - violation_type: "RATE_LIMIT_EXCEEDED"
+        action: "THROTTLE"  # Slow down, don't block
+        notify: null
+
+      - violation_type: "SECRET_DETECTION"
+        action: "DENY_AND_TERMINATE"
+        notify: "security-team@example.com"
+        alert_severity: "CRITICAL"
+        terminate_agent: true
+
+  # Policy escalation and exceptions
+  exceptions:
+    # Exception process for policy violations
+    allow_exceptions: true
+    exception_approval_required: true
+    exception_approvers:
+      - "compliance-officer@example.com"
+      - "chief-privacy-officer@example.com"
+    exception_approval_timeout_hours: 4
+    exception_duration_max_hours: 24
+    require_exception_justification: true
+    log_all_exceptions: true
+
+  # Compliance-specific settings
+  compliance:
+    framework: "HIPAA"
+
+    # HIPAA-specific requirements
+    hipaa:
+      enforce_phy: true
+      enforce_encryption: true
+      require_audit_logs: true
+      minimum_role_based_access: true
+
+    # SOC2-specific requirements
+    soc2:
+      enforce_access_controls: true
+      enforce_change_management: true
+      enforce_audit_trails: true
+
+    # PCI-DSS requirements
+    pci_dss:
+      enforce_encryption: true
+      enforce_access_control: true
+      prevent_malware: true
+
+  # Monitoring and alerting
+  monitoring:
+    # Key metrics to monitor
+    alert_thresholds:
+      token_budget_percentage_warn: 80
+      token_budget_percentage_critical: 95
+      rate_limit_percentage_threshold: 90
+      policy_violations_per_hour: 5
+
+    # Alert destinations
+    alert_channels:
+      - type: "EMAIL"
+        recipients: "ops-team@example.com"
+        severity_threshold: "WARNING"
+
+      - type: "SLACK"
+        channel: "#security-alerts"
+        severity_threshold: "CRITICAL"
+
+      - type: "PAGERDUTY"
+        service_id: "pd-service-123"
+        severity_threshold: "CRITICAL"
+
+  # Notes and documentation
+  notes: |
+    # Strict Governance Policy for Regulated Environments
+
+    This policy implements multi-layered defense for highly-sensitive workloads:
+
+    **Token Limits**:
+    - Daily: 100K tokens
+    - Hourly: 10K tokens
+    - Per-minute: 500 tokens
+
+    **Data Protection**:
+    - Blocks access to PHI, PCI, and RESTRICTED data
+    - Detects and redacts PII
+    - Encrypts all data in transit and at rest
+
+    **Time Controls**:
+    - Business hours only (9am-5pm Eastern)
+    - Holiday blackouts
+    - Weekend restrictions
+
+    **Audit & Compliance**:
+    - All decisions logged and immutable
+    - 1-year retention
+    - Real-time alerting to security team
+
+    **Network Isolation**:
+    - Allowlist-only external access
+    - No DNS/ICMP tunneling
+    - TLS 1.3 minimum
+
+    This policy should be used for:
+    - Healthcare data processing (HIPAA compliance)
+    - Payment processing (PCI-DSS compliance)
+    - Financial data handling
+    - SOC2-audited systems
+
+    NOT suitable for:
+    - Development/testing environments
+    - Non-sensitive workloads
+    - Rapid prototyping
+
+    Use policy_governance_moderate.yaml for balanced environments.
+    Use policy_governance_permissive.yaml for non-regulated environments.
