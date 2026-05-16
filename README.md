@@ -252,29 +252,13 @@ For Kubernetes-specific details, see [reference/myelin-ax/ARCHITECTURE.md](refer
 
 ## Documentation
 
-### Getting Started
+### Getting Started & Overview
 
-- **[docs/getting-started/](docs/getting-started/)** — Quick-start guides by role
-  - **Overview**: What is USAGIX and why it matters
-  - **For Substrate Implementers**: Building a USAGIX-compliant substrate
-  - **For Adopters**: Deploying USAGIX systems in production
-  - **For Policy Authors**: Writing governance policies (OPA)
+- **[docs/README.md](docs/README.md)** — Documentation index organized by role and use case
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — How to contribute (RFC process, DCO requirements)
+- **[ROADMAP.md](ROADMAP.md)** — Multi-year evolution plan and contribution areas
 
-### Implementation Guides
-
-- **[docs/implementation/](docs/implementation/)** — Platform-specific implementation guides
-  - **Kubernetes** (reference: Myelin-AX) — Operator, CRDs, sidecar enforcement
-  - **Serverless** — AWS Lambda, Google Cloud Run, Azure Functions
-  - **WASM** — Wasmtime, WasmEdge runtimes
-  - **VM-based** — KVM, QEMU, systemd environments
-
-### API & Compliance
-
-- **[docs/api-reference/](docs/api-reference/)** — ASI gRPC API, protobuf definitions, and system call reference
-- **[docs/compliance/](docs/compliance/)** — Compliance profiles (HIPAA, PCI-DSS, SOC2, GDPR)
-- **[docs/governance/](docs/governance/)** — Policy schema definitions and policy authoring examples
-
-### Reference Implementation
+### Reference Implementation & Deployment
 
 - **[reference/myelin-ax/ARCHITECTURE.md](reference/myelin-ax/ARCHITECTURE.md)** — Myelin-AX design and USAGIX mapping
 - **[reference/myelin-ax/deployment/](reference/myelin-ax/deployment/)** — Kubernetes manifests and deployment examples
@@ -283,8 +267,24 @@ For Kubernetes-specific details, see [reference/myelin-ax/ARCHITECTURE.md](refer
 ### Specifications & Architecture
 
 - **[RFC/](RFC/)** — Request for Comments (formal proposals and approved RFCs)
+  - [RFC-0001: Core Architecture](RFC/rfc-0001-usagix-core.md)
+  - [RFC-0002: Agent Lifecycle](RFC/rfc-0002-agent-lifecycle.md)
+  - [RFC-0003: Memory Model](RFC/rfc-0003-memory-model.md)
+  - [RFC-0004: Governance Model](RFC/rfc-0004-governance-model.md)
+  - [RFC-0005: ASI System Calls](RFC/rfc-0005-asi-system-calls.md)
+  - [RFC-0006: Security Model](RFC/rfc-0006-security-model.md)
+  - [RFC-0007: Inference Scheduler](RFC/rfc-0007-inference-scheduler.md)
+  - [RFC-0008: Multi-Agent Coordination](RFC/rfc-0008-multi-agent-coordination.md)
+
 - **[architecture/](architecture/)** — Architecture documentation and design decisions
-- **[spec/](spec/)** — Legacy specification documents (being superseded by RFCs)
+- **[spec/](spec/)** — Detailed specification documents
+  - [Core Architecture](spec/usage-core.md)
+  - [Security Model](spec/security-model.md)
+  - [Memory Model](spec/memory-model.md)
+  - [Governance Model](spec/governance-model.md)
+  - [Runtime State Machine](spec/runtime-state-machine.md)
+  - [ASI System Calls](spec/asi-system-calls.md)
+  - [Versioning Policy](spec/versioning.md)
 
 ---
 
@@ -320,14 +320,14 @@ For Kubernetes-specific details, see [reference/myelin-ax/ARCHITECTURE.md](refer
 3. Review [design principles](#design-principles) and [architecture overview](#architecture-overview)
 
 ### For Implementers
-1. Start with [Myelin-AX ARCHITECTURE.md](reference/myelin-ax/ARCHITECTURE.md)
-2. Follow the [docs/implementation/](docs/implementation/) guide for your platform (Kubernetes, serverless, WASM, VMs)
-3. Review [RFC-0005 (ASI System Calls)](RFC/rfc-0005-asi-system-calls.md) for gRPC contract details
+1. Start with [Myelin-AX ARCHITECTURE.md](reference/myelin-ax/ARCHITECTURE.md) to understand how USAGIX maps to Kubernetes
+2. Review [RFC-0005 (ASI System Calls)](RFC/rfc-0005-asi-system-calls.md) for gRPC contract details
+3. Examine [reference/myelin-ax/deployment/](reference/myelin-ax/deployment/) for example manifests
 
 ### For Adopters & Users
 1. Review the [Hello World manifest](#hello-world-agent-manifest) above
-2. See [docs/getting-started/adopters.md](docs/getting-started/adopters.md) for deployment examples
-3. Explore [reference/myelin-ax/policies/](reference/myelin-ax/policies/) for governance policy examples
+2. Explore [reference/myelin-ax/policies/](reference/myelin-ax/policies/) for governance policy examples
+3. See [ADOPTERS.md](ADOPTERS.md) for organizations using USAGIX and deployment patterns
 
 ### For Contributors
 1. Read [CONTRIBUTING.md](CONTRIBUTING.md) for process and DCO requirements
