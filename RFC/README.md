@@ -1,10 +1,10 @@
-# USAGE RFCs (Request for Comments)
+# USAGIX RFCs (Request for Comments)
 
-This directory contains RFC (Request for Comments) proposals for the USAGE specification.
+This directory contains RFC (Request for Comments) proposals for the USAGIX specification.
 
 ## What is an RFC?
 
-An RFC is a formal proposal for significant changes to the USAGE specification. RFCs are used for:
+An RFC is a formal proposal for significant changes to the USAGIX specification. RFCs are used for:
 
 - **MAJOR version changes** (breaking changes requiring v2.0.0)
 - **Significant MINOR features** with architectural implications
@@ -160,4 +160,4 @@ Do NOT reuse RFC numbers. If an RFC is rejected, the number is retired.
 ---
 
 **Last Updated**: 2025-03-15  
-**Maintained By**: USAGE Specification Stewards
+**Maintained By**: USAGIX Specification Stewards

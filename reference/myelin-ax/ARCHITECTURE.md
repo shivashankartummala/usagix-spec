@@ -2,13 +2,13 @@
 
 ## Overview
 
-Myelin-AX is a reference implementation of the USAGE specification for Kubernetes environments. 
-This document describes the Myelin-AX architecture and how it maps USAGE abstract concepts 
+Myelin-AX is a reference implementation of the USAGIX specification for Kubernetes environments. 
+This document describes the Myelin-AX architecture and how it maps USAGIX abstract concepts 
 to Kubernetes primitives.
 
 ## Abstract ↔ Concrete Mapping
 
-| USAGE Abstract Concept | Myelin-AX Implementation |
+| USAGIX Abstract Concept | Myelin-AX Implementation |
 |---|---|
 | Cognitive Container | Agent process in Kubernetes Pod (container named `agent-brain`) |
 | Governance Enforcement Plane | Sidecar container in same Pod (container named `myelin-proxy`) |
@@ -33,7 +33,7 @@ Pod: agent-instance-12345
 │
 └── Container: myelin-proxy
     ├── Runtime: Go 1.22+
-    ├── Code: USAGE ASI gRPC server + policy engine + tool executor
+    ├── Code: USAGIX ASI gRPC server + policy engine + tool executor
     ├── Network: Full (reaches databases, APIs, tools)
     ├── Filesystem: Full (policy files, audit logs, secrets)
     ├── Seccomp: permissive
@@ -54,7 +54,7 @@ service UsageASI {
 
 // Server in myelin-proxy
 service UsageASI {
-  // Implements all USAGE RPC methods
+  // Implements all USAGIX RPC methods
 }
 ```
 
@@ -71,7 +71,7 @@ metadata:
   name: agent-12345
   namespace: agents
 spec:
-  # Agent manifest (from USAGE spec)
+  # Agent manifest (from USAGIX spec)
   agentConfig:
     image: agent-image:latest
     llmModel: gpt-4-turbo
@@ -137,7 +137,7 @@ Myelin-AX stores checkpoints in S3/GCS:
 s3://usage-checkpoints/{namespace}/{agentSessionID}/checkpoint-{timestamp}.pb
 ```
 
-Checkpoint format: Protocol Buffer (opaque to agent, transparent header as per USAGE spec).
+Checkpoint format: Protocol Buffer (opaque to agent, transparent header as per USAGIX spec).
 
 On agent resume (`UsageMemPageIn`):
 1. Fetch checkpoint from S3
@@ -181,4 +181,4 @@ Myelin-AX assumes Kubernetes. Other substrates might:
 - **WASM**: Deploy agent as WASM module, governance in host VM
 - **VM**: Deploy agent as VM process, governance in privileged host process
 
-All would implement the same USAGE specification, but trust domain separation would look different.
+All would implement the same USAGIX specification, but trust domain separation would look different.

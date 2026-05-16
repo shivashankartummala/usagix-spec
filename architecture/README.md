@@ -1,6 +1,6 @@
-# USAGE Architecture Documentation
+# USAGIX Architecture Documentation
 
-This directory contains architecture documentation, diagrams, and design rationale for the USAGE specification.
+This directory contains architecture documentation, diagrams, and design rationale for the USAGIX specification.
 
 ## Directory Structure
 
@@ -23,7 +23,7 @@ Detailed architecture documentation:
 
 ## Architecture Overview
 
-USAGE defines a layered architecture separating concerns across multiple tiers:
+USAGIX defines a layered architecture separating concerns across multiple tiers:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -137,7 +137,7 @@ Agents benefit from all three tiers without managing the complexity.
 
 ## Reference Implementation Mappings
 
-See [../reference/myelin-ax/ARCHITECTURE.md](../reference/myelin-ax/ARCHITECTURE.md) for how abstract USAGE concepts map to Kubernetes primitives:
+See [../reference/myelin-ax/ARCHITECTURE.md](../reference/myelin-ax/ARCHITECTURE.md) for how abstract USAGIX concepts map to Kubernetes primitives:
 
 - **Cognitive Container** → Kubernetes pod with LLM runtime sidecar
 - **Governance Enforcement Plane** → Kubernetes pod with myelin-proxy sidecar
@@ -180,4 +180,4 @@ See [../reference/myelin-ax/ARCHITECTURE.md](../reference/myelin-ax/ARCHITECTURE
 ---
 
 **Last Updated**: 2025-03-15  
-**Maintained By**: USAGE Specification Stewards
+**Maintained By**: USAGIX Specification Stewards

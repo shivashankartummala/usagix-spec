@@ -1,26 +1,26 @@
-# USAGE Documentation
+# USAGIX Documentation
 
-This directory contains comprehensive documentation for the USAGE specification, organized by audience and use case.
+This directory contains comprehensive documentation for the USAGIX specification, organized by audience and use case.
 
 ## Directory Structure
 
 ### [getting-started/](getting-started/)
 Quick-start guides for different audiences:
-- **[overview.md](getting-started/overview.md)** — What is USAGE? High-level overview
-- **[substrate-implementers.md](getting-started/substrate-implementers.md)** — Start building a USAGE substrate
-- **[adopters.md](getting-started/adopters.md)** — Deploying USAGE-compliant systems
+- **[overview.md](getting-started/overview.md)** — What is USAGIX? High-level overview
+- **[substrate-implementers.md](getting-started/substrate-implementers.md)** — Start building a USAGIX substrate
+- **[adopters.md](getting-started/adopters.md)** — Deploying USAGIX-compliant systems
 - **[policy-authors.md](getting-started/policy-authors.md)** — Writing governance policies
 
 ### [implementation/](implementation/)
 Detailed implementation guides by platform:
-- **[kubernetes/](implementation/kubernetes/)** — Implementing USAGE on Kubernetes (reference: Myelin-AX)
-- **[serverless/](implementation/serverless/)** — Implementing USAGE on AWS Lambda, Google Cloud Run, Azure Functions
-- **[wasm/](implementation/wasm/)** — Implementing USAGE in WebAssembly (Wasmtime, WasmEdge)
-- **[vm-based/](implementation/vm-based/)** — Implementing USAGE on VMs (KVM, QEMU, systemd)
+- **[kubernetes/](implementation/kubernetes/)** — Implementing USAGIX on Kubernetes (reference: Myelin-AX)
+- **[serverless/](implementation/serverless/)** — Implementing USAGIX on AWS Lambda, Google Cloud Run, Azure Functions
+- **[wasm/](implementation/wasm/)** — Implementing USAGIX in WebAssembly (Wasmtime, WasmEdge)
+- **[vm-based/](implementation/vm-based/)** — Implementing USAGIX on VMs (KVM, QEMU, systemd)
 
 ### [compliance/](compliance/)
 Compliance and certification documentation:
-- **[conformance.md](compliance/conformance.md)** — USAGE conformance test suite
+- **[conformance.md](compliance/conformance.md)** — USAGIX conformance test suite
 - **[hipaa.md](compliance/hipaa.md)** — HIPAA compliance profile
 - **[pci-dss.md](compliance/pci-dss.md)** — PCI-DSS compliance profile
 - **[soc2.md](compliance/soc2.md)** — SOC2 compliance profile
@@ -79,7 +79,7 @@ All documentation follows these conventions:
 
 ### Format
 - **Markdown** (.md) for all documentation
-- **RFC 2119 keywords** in USAGE specification documents (MUST, SHOULD, etc.)
+- **RFC 2119 keywords** in USAGIX specification documents (MUST, SHOULD, etc.)
 - **Plain language** in guides and tutorials
 
 ### Structure
@@ -123,4 +123,4 @@ When adding new documentation:
 ---
 
 **Last Updated**: 2025-03-15  
-**Maintained By**: USAGE Specification Stewards
+**Maintained By**: USAGIX Specification Stewards

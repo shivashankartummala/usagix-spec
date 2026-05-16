@@ -14,7 +14,7 @@
 # - Encryption enforcement for sensitive data
 #
 # Usage: Bind this policy to agents requiring high governance
-# Author: USAGE Platform - Compliance Team
+# Author: USAGIX Platform - Compliance Team
 # Version: 1.0.0
 
 apiVersion: mantle.sh/v1alpha1

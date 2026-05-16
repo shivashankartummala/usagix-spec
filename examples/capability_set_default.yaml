@@ -3,7 +3,7 @@
 # that follow the principle of least privilege while enabling common operations.
 #
 # Usage: Bind this capability set to agents during UsageSpawn or via SetCapability
-# Author: USAGE Platform
+# Author: USAGIX Platform
 # Version: 1.0.0
 
 apiVersion: mantle.sh/v1alpha1
